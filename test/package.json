@@ -1,6 +1,6 @@
 {
   "name": "passport-stanford-example",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Example for Passport-Stanford strategy",
   "author": "Scotty Logan <swl@stanford.edu>",
   "license": "MIT",
@@ -9,6 +9,11 @@
       "name": "Gerard Braad",
       "email": "me@gbraad.nl",
       "url": "http://gbraad.nl"
+    },
+    {
+      "name": "Arash H. Far",
+      "email": "arashfar@stanford.edu",
+      "url": "https://www.linkedin.com/in/arashhf/"
     }
   ],
   "repository": {
@@ -19,19 +24,16 @@
     "start": "rm -rf node_modules/passport-stanford && npm install && node app.js",
     "gencert": "openssl req -new -nodes -x509 -newkey rsa:2048 -keyout private.pem -out public.pem -days 3650 -subj /CN=localhost"
   },
+  "type": "module",
   "dependencies": {
-    "body-parser": "*",
-    "cookie-parser": "*",
-    "errorhandler": "*",
-    "express": "*",
-    "express-session": "*",
-    "method-override": "*",
-    "morgan": "*",
-    "passport": "*",
-    "passport-saml": "*",
-    "passport-stanford": "file:..",
-    "pug": "2.0.0-beta4",
-    "qs": "*"
+    "express": "^4.17.1",
+    "cookie-parser": "^1.4.5",
+    "express-session": "^1.17.1",
+    "morgan": "^1.10.0",
+    "body-parser": "^1.19.0",
+    "passport": "^0.4.1",
+    "passport-stanford": "^1.0.0",
+    "pug": "^3.0.2"
   },
   "engines": {
     "node": ">= 8.0.0"
