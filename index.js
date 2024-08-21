@@ -45,6 +45,7 @@ class Strategy extends saml.Strategy {
       if (idps[options.idp]) {
         options.entryPoint = idps[options.idp].entryPoint
         options.cert = idps[options.idp].cert
+        options.idpCert = idps[options.idp].cert
       } else {
         throw new Error('Unknown IdP: ' + options.idp)
       }
@@ -54,6 +55,7 @@ class Strategy extends saml.Strategy {
       console.warn('No IdP defined - defaulting to ' + idps.dev.entityID)
       options.entryPoint = idps.dev.entryPoint
       options.cert = idps.dev.cert
+      options.idpCert = idps.dev.cert
     }
 
     if (!options.issuer) {
