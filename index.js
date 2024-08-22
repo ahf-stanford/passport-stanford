@@ -22,7 +22,7 @@ class Strategy extends saml.Strategy {
     }
 
     if (options.validatedInResponseTo === undefined) {
-      options.validateInResponseTo = true
+      options.validateInResponseTo = 'always'
     }
 
     if (options.decryptionCertPath) {
