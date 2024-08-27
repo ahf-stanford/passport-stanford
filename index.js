@@ -6,7 +6,7 @@ const idps = require('./lib/idps')
 const attrmap = require('./lib/attributes')
 
 //  An extensnion of the Passport SAML strategy for Stanford.
-class Strategy extends saml.Strategy {
+class strategy {
     constructor(options, verify) {
         // some sensible defaults
         options.protocol = options.protocol || 'https://'
@@ -25,13 +25,16 @@ class Strategy extends saml.Strategy {
             options.validateInResponseTo = 'always'
         }
 
-        if (options.decryptionCertPath) {
+        if (options.decryptionCertPath && !options.decryptionCert) {
             options.decryptionCert = fs.readFileSync(options.decryptionCertPath, 'utf8')
         }
 
-        if (options.decryptionPvkPath) {
+        if (options.decryptionPvkPath && !options.decryptionPvk) {
             options.decryptionPvk = fs.readFileSync(options.decryptionPvkPath, 'utf8')
         }
+
+        console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 38) ?? 'No Key')
+        console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 38) ?? 'No Cert')
 
         if (options.entityID) {
             options.issuer = options.entityID
@@ -90,18 +93,16 @@ class Strategy extends saml.Strategy {
         }.bind(this))
 
         //suSaml.bind(this)
-
         // saml.Strategy.call(this, options, function (req, profile, done) {
         //     req.session.strategy = this.name
         //     this.attributeMapper(profile, done)
         // }.bind(this))
-
         // set the name of this strategy to either the name passed in
         // via the options, or the short name of the idp.
         //
         // if neither is set, the name will be 'suSAML'
-
         this.name = options.name || options.idp || 'suSAML'
+
 
     }
 
@@ -118,10 +119,10 @@ class Strategy extends saml.Strategy {
                 }
                 res.redirect(this.loginPath)
             }
-        }
+        }.bind(this)
     }
 
-    _return(url) {
+    return(url) {
         return function (req, res) {
             if (req.session && req.session.returnTo) {
                 url = req.session.returnTo
@@ -135,8 +136,10 @@ class Strategy extends saml.Strategy {
         return function (req, res) {
             res.type('application/xml')
             res.status(200).send(this.generateServiceProviderMetadata(this._saml.options.decryptionCert))
-        }
+        }.bind(this)
     }
 }
 
-module.exports = Strategy
+util.inherits(strategy, saml.Strategy)
+
+module.exports.Strategy = strategy
