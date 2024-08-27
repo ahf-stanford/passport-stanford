@@ -33,8 +33,8 @@ class strategy {
             options.decryptionPvk = fs.readFileSync(options.decryptionPvkPath, 'utf8')
         }
 
-        //console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 38) ?? 'No Key')
-        //console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 38) ?? 'No Cert')
+        //console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 33) ?? 'No Key')
+        //console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 33) ?? 'No Cert')
 
         if (options.entityID) {
             options.issuer = options.entityID
@@ -43,6 +43,8 @@ class strategy {
         if (options.entityId) {
             options.issuer = options.entityId
         }
+        console.log('===> options.issuer: ', options.issuer)
+
 
         if (options.idp) {
             console.log('===> options.idp: ', options.idp)
@@ -52,8 +54,8 @@ class strategy {
                 options.cert = idps[options.idp].cert
                 options.idpCert = idps[options.idp].cert
                 console.log('===> options.entryPoint: ', options.entryPoint)
-                console.log('===> options.cert: ', String(options.cert).substring(28, 38) ?? 'No Key')
-                console.log('===> options.idpCert: ', String(options.idpCert).substring(28, 38) ?? 'No Key')
+                console.log('===> options.cert: ', String(options.cert).substring(28, 33) ?? 'No Key')
+                console.log('===> options.idpCert: ', String(options.idpCert).substring(28, 33) ?? 'No Key')
             } else {
                 throw new Error('Unknown IdP: ' + options.idp)
             }
