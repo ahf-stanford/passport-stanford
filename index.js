@@ -33,8 +33,8 @@ class strategy {
             options.decryptionPvk = fs.readFileSync(options.decryptionPvkPath, 'utf8')
         }
 
-        console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 38) ?? 'No Key')
-        console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 38) ?? 'No Cert')
+        //console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 38) ?? 'No Key')
+        //console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 38) ?? 'No Cert')
 
         if (options.entityID) {
             options.issuer = options.entityID
@@ -45,10 +45,15 @@ class strategy {
         }
 
         if (options.idp) {
+            console.log('===> options.idp: ', options.idp)
             if (idps[options.idp]) {
+                console.log('===> idps[options.idp].description: ', idps[options.idp].description)
                 options.entryPoint = idps[options.idp].entryPoint
                 options.cert = idps[options.idp].cert
                 options.idpCert = idps[options.idp].cert
+                console.log('===> options.entryPoint: ', options.entryPoint)
+                console.log('===> options.cert: ', String(options.cert).substring(28, 38) ?? 'No Key')
+                console.log('===> options.idpCert: ', String(options.idpCert).substring(28, 38) ?? 'No Key')
             } else {
                 throw new Error('Unknown IdP: ' + options.idp)
             }
@@ -81,6 +86,7 @@ class strategy {
         }
 
         this.loginPath = options.loginPath
+        console.log('===> this.loginPath: ', this.loginPath)
 
         // set up an attribute mapper
         this.attributeMapper = attrmap(options.attributeMap)
@@ -102,11 +108,11 @@ class strategy {
         //
         // if neither is set, the name will be 'suSAML'
         this.name = options.name || options.idp || 'suSAML'
-
-
+        console.log('===> Strategy name: ', this.name)
     }
 
     protect() {
+        console.log('===> Called: protect()')
         return function (req, res, next) {
             if (req.isAuthenticated() && req.session.strategy === this.name) {
                 return next()
@@ -123,6 +129,7 @@ class strategy {
     }
 
     return(url) {
+        console.log('===> Called: return()')
         return function (req, res) {
             if (req.session && req.session.returnTo) {
                 url = req.session.returnTo
@@ -133,6 +140,7 @@ class strategy {
     }
 
     metadata() {
+        console.log('===> Called: metadata()')
         return function (req, res) {
             res.type('application/xml')
             res.status(200).send(this.generateServiceProviderMetadata(this._saml.options.decryptionCert))
