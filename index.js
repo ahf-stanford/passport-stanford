@@ -93,6 +93,10 @@ class strategy {
         // set up an attribute mapper
         this.attributeMapper = attrmap(options.attributeMap)
 
+        // if neither is set, the name will be 'suSAML'
+        this.name = options.name || options.idp || 'suSAML'
+        console.log('===> Strategy name: ', this.name)
+        
         // call the parent method before setting the strategy name,
         // otherwise the name will always be 'saml'
         let suSaml = new saml.Strategy(options, function (req, profile, done) {
@@ -108,9 +112,6 @@ class strategy {
         // set the name of this strategy to either the name passed in
         // via the options, or the short name of the idp.
         //
-        // if neither is set, the name will be 'suSAML'
-        this.name = options.name || options.idp || 'suSAML'
-        console.log('===> Strategy name: ', this.name)
     }
 
     protect() {
