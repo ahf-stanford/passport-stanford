@@ -53,6 +53,8 @@ class strategy {
                 options.entryPoint = idps[options.idp].entryPoint
                 options.cert = idps[options.idp].cert
                 options.idpCert = idps[options.idp].cert
+                options.idpIssuer = idps[options.idp].entityID
+                //options.idpIssuer = options.entityId
                 console.log('===> options.entryPoint: ', options.entryPoint)
                 console.log('===> options.cert: ', String(options.cert).substring(28, 33) ?? 'No Key')
                 console.log('===> options.idpCert: ', String(options.idpCert).substring(28, 33) ?? 'No Key')
