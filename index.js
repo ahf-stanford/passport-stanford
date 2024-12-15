@@ -1,158 +1,137 @@
-const saml = require('@node-saml/passport-saml')
+const { Strategy: SAMLStrategy } = require('@node-saml/passport-saml')
 const fs = require('fs')
-const util = require('util')
-const url = require('url')
-const idps = require('./lib/idps')
 const attrmap = require('./lib/attributes')
+const idps = require('./lib/idps')
 
-//  An extensnion of the Passport SAML strategy for Stanford.
-class strategy {
+class Strategy extends SAMLStrategy {
     constructor(options, verify) {
-        // some sensible defaults
-        options.protocol = options.protocol || 'https://'
-        options.signatureAlgorithm = options.signatureAlgorithm || 'sha256'
-        options.identifierFormat = options.identifierFormat || 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient'
-        options.acceptedClockSkewMs = options.acceptedClockSkewMs || 60000
-        options.attributeConsumingServiceIndex = options.attributeConsumingServiceIndex || false
-        options.forceAuthn = options.forceAuthn || false
-        options.skipRequestCompression = options.skipRequestCompression || false
-
-        if (options.disableRequestedAuthnContext === undefined) {
-            options.disableRequestedAuthnContext = true
+        // Set default options
+        const samlOptions = {
+            protocol: options.protocol || 'https://',
+            signatureAlgorithm: 'sha256',
+            identifierFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:transient',
+            acceptedClockSkewMs: options.acceptedClockSkewMs || 60000,
+            attributeConsumingServiceIndex: options.attributeConsumingServiceIndex || false,
+            forceAuthn: options.forceAuthn || false,
+            skipRequestCompression: options.skipRequestCompression || false,
+            disableRequestedAuthnContext: options.disableRequestedAuthnContext ?? true,
+            validateInResponseTo: options.validateInResponseTo || 'never',
+            passReqToCallback: true
         }
 
-        if (options.validatedInResponseTo === undefined) {
-            options.validateInResponseTo = 'always'
+        // Ensure callbackUrl is set
+        if (!options.callbackUrl && options.path) {
+            const protocol = options.protocol || 'https://'
+            const host = options.host || samlBackendURL
+            samlOptions.callbackUrl = `${protocol}${host}${options.path}`
+        } else {
+            samlOptions.callbackUrl = options.callbackUrl
         }
 
+        // Handle decryption certificates
         if (options.decryptionCertPath && !options.decryptionCert) {
-            options.decryptionCert = fs.readFileSync(options.decryptionCertPath, 'utf8')
+            samlOptions.decryptionCert = fs.readFileSync(options.decryptionCertPath, 'utf8')
         }
-
         if (options.decryptionPvkPath && !options.decryptionPvk) {
-            options.decryptionPvk = fs.readFileSync(options.decryptionPvkPath, 'utf8')
+            samlOptions.decryptionPvk = fs.readFileSync(options.decryptionPvkPath, 'utf8')
         }
 
-        //console.log('===> options.decryptionPvk: ', String(options.decryptionPvk).substring(28, 33) ?? 'No Key')
-        //console.log('===> options.decryptionCert: ', String(options.decryptionCert).substring(28, 33) ?? 'No Cert')
+        // Handle entity ID
+        samlOptions.issuer = options.entityID || options.entityId
 
-        if (options.entityID) {
-            options.issuer = options.entityID
-        }
-
-        if (options.entityId) {
-            options.issuer = options.entityId
-        }
-        console.log('===> options.issuer: ', options.issuer)
-
-
+        // Configure IDP
         if (options.idp) {
-            console.log('===> options.idp: ', options.idp)
-            if (idps[options.idp]) {
-                console.log('===> idps[options.idp].description: ', idps[options.idp].description)
-                options.entryPoint = idps[options.idp].entryPoint
-                options.cert = idps[options.idp].cert
-                options.idpCert = idps[options.idp].cert
-                options.idpIssuer = idps[options.idp].entityID
-                //options.idpIssuer = options.entityId
-                console.log('===> options.entryPoint: ', options.entryPoint)
-                console.log('===> options.cert: ', String(options.cert).substring(28, 33) ?? 'No Key')
-                console.log('===> options.idpCert: ', String(options.idpCert).substring(28, 33) ?? 'No Key')
-            } else {
+            if (!idps[options.idp]) {
                 throw new Error('Unknown IdP: ' + options.idp)
             }
+            const idp = idps[options.idp]
+            Object.assign(samlOptions, {
+                entryPoint: idp.entryPoint,
+                cert: idp.cert,
+                idpCert: idp.cert,
+                idpIssuer: idp.entityID
+            })
+        } else if (!options.entryPoint || !options.cert) {
+            const defaultIdp = idps.dev
+            Object.assign(samlOptions, {
+                entryPoint: defaultIdp.entryPoint,
+                cert: defaultIdp.cert,
+                idpCert: defaultIdp.cert
+            })
+            console.warn('No IdP defined - defaulting to ' + defaultIdp.entityID)
         }
 
-        if (!options.entryPoint || !options.cert) {
-            console.warn('No IdP defined - defaulting to ' + idps.dev.entityID)
-            options.entryPoint = idps.dev.entryPoint
-            options.cert = idps.dev.cert
-            options.idpCert = idps.dev.cert
-        }
-
-        if (!options.issuer) {
+        // Validate required options
+        if (!samlOptions.issuer) {
             throw new Error('No entityId defined!')
         }
-
-        // having either both an encryption cert and private key is valid
-        // having neither an encryption cert nor a private key is also valid
-        // having only one or the other is NOT valid
-        if (!options.decryptionCert && options.decryptionPvk) {
-            throw new Error('Only a private key was defined a public cert is also required')
-        }
-
-        if (options.decryptionCert && !options.decryptionPvk) {
-            throw new Error('Only a public cert was defined a private key is also required')
-        }
-
         if (!options.loginPath) {
             throw new Error('No loginPath defined!')
         }
+        if (!samlOptions.callbackUrl) {
+            throw new Error('No callbackUrl defined!')
+        }
+        if (Boolean(options.decryptionCert) !== Boolean(options.decryptionPvk)) {
+            throw new Error('Both decryptionCert and decryptionPvk must be provided if either is present')
+        }
 
-        this.loginPath = options.loginPath
-        console.log('===> this.loginPath: ', this.loginPath)
+        // Set up attribute mapper
+        const attributeMapper = attrmap(options.attributeMap)
 
-        // set up an attribute mapper
-        this.attributeMapper = attrmap(options.attributeMap)
+        // Set strategy name
+        const name = options.name || options.idp || 'suSAML'
 
-        // if neither is set, the name will be 'suSAML'
-        this.name = options.name || options.idp || 'suSAML'
-        console.log('===> Strategy name: ', this.name)
-        
-        // call the parent method before setting the strategy name,
-        // otherwise the name will always be 'saml'
-        let suSaml = new saml.Strategy(options, function (req, profile, done) {
-            req.session.strategy = this.name
-            this.attributeMapper(profile, done)
-        }.bind(this))
+        // Copy all remaining options
+        Object.assign(samlOptions, {
+            ...options,
+            name
+        })
 
-        //suSaml.bind(this)
-        // saml.Strategy.call(this, options, function (req, profile, done) {
-        //     req.session.strategy = this.name
-        //     this.attributeMapper(profile, done)
-        // }.bind(this))
-        // set the name of this strategy to either the name passed in
-        // via the options, or the short name of the idp.
-        //
+        // Initialize parent class with wrapped verify callback
+        super(samlOptions, (req, profile, done) => {
+            if (req.session) {
+                req.session.strategy = name
+            }
+            attributeMapper(profile, done)
+        })
+
+        this.name = name
+        this._loginPath = options.loginPath
     }
 
     protect() {
-        console.log('===> Called: protect()')
-        return function (req, res, next) {
-            if (req.isAuthenticated() && req.session.strategy === this.name) {
+        return (req, res, next) => {
+            if (req.isAuthenticated() && req.session?.strategy === this.name) {
                 return next()
-            } else {
-                if (req.session) {
-                    req.session.strategy = this.name
-                    req.session.returnTo = req.url
-                } else {
-                    console.warn('passport-stanford: No session property on request!')
-                }
-                res.redirect(this.loginPath)
             }
-        }.bind(this)
+            
+            if (req.session) {
+                req.session.strategy = this.name
+                req.session.returnTo = req.url
+            } else {
+                console.warn('passport-stanford: No session property on request!')
+            }
+            res.redirect(this._loginPath)
+        }
     }
 
     return(url) {
-        console.log('===> Called: return()')
-        return function (req, res) {
-            if (req.session && req.session.returnTo) {
-                url = req.session.returnTo
+        return (req, res) => {
+            let redirectUrl = url
+            if (req.session?.returnTo) {
+                redirectUrl = req.session.returnTo
                 delete req.session.returnTo
             }
-            res.redirect(url || '/')
+            res.redirect(redirectUrl || '/')
         }
     }
 
     metadata() {
-        console.log('===> Called: metadata()')
-        return function (req, res) {
+        return (req, res) => {
             res.type('application/xml')
             res.status(200).send(this.generateServiceProviderMetadata(this._saml.options.decryptionCert))
-        }.bind(this)
+        }
     }
 }
 
-util.inherits(strategy, saml.Strategy)
-
-module.exports.Strategy = strategy
+module.exports = { Strategy }
