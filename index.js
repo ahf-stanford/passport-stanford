@@ -16,13 +16,16 @@ class Strategy extends SAMLStrategy {
             skipRequestCompression: options.skipRequestCompression || false,
             disableRequestedAuthnContext: options.disableRequestedAuthnContext ?? true,
             validateInResponseTo: options.validateInResponseTo || 'never',
-            passReqToCallback: true
+            passReqToCallback: true,
+            wantAssertionsSigned: true,
+            wantAuthnResponseSigned: true
         }
 
         // Ensure callbackUrl is set
         if (!options.callbackUrl && options.path) {
             const protocol = options.protocol || 'https://'
-            const host = options.host || samlBackendURL
+            // const host = options.host || samlBackendURL
+            const host = options.host
             samlOptions.callbackUrl = `${protocol}${host}${options.path}`
         } else {
             samlOptions.callbackUrl = options.callbackUrl
@@ -39,6 +42,28 @@ class Strategy extends SAMLStrategy {
         // Handle entity ID
         samlOptions.issuer = options.entityID || options.entityId
 
+        // // Configure IDP
+        // if (options.idp) {
+        //     if (!idps[options.idp]) {
+        //         throw new Error('Unknown IdP: ' + options.idp)
+        //     }
+        //     const idp = idps[options.idp]
+        //     Object.assign(samlOptions, {
+        //         entryPoint: idp.entryPoint,
+        //         cert: idp.cert,
+        //         idpCert: idp.cert,
+        //         idpIssuer: idp.entityID
+        //     })
+        // } else if (!options.entryPoint || !options.cert) {
+        //     const defaultIdp = idps.dev
+        //     Object.assign(samlOptions, {
+        //         entryPoint: defaultIdp.entryPoint,
+        //         cert: defaultIdp.cert,
+        //         idpCert: defaultIdp.cert
+        //     })
+        //     console.warn('No IdP defined - defaulting to ' + defaultIdp.entityID)
+        // }
+
         // Configure IDP
         if (options.idp) {
             if (!idps[options.idp]) {
@@ -49,17 +74,21 @@ class Strategy extends SAMLStrategy {
                 entryPoint: idp.entryPoint,
                 cert: idp.cert,
                 idpCert: idp.cert,
-                idpIssuer: idp.entityID
+                idpIssuer: idp.entityID,
+                logoutUrl: idp.logoutUrl,
+                identifierFormat: idp.identifierFormat || samlOptions.identifierFormat
             })
         } else if (!options.entryPoint || !options.cert) {
             const defaultIdp = idps.dev
             Object.assign(samlOptions, {
                 entryPoint: defaultIdp.entryPoint,
                 cert: defaultIdp.cert,
-                idpCert: defaultIdp.cert
+                idpCert: defaultIdp.cert,
+                logoutUrl: defaultIdp.logoutUrl
             })
             console.warn('No IdP defined - defaulting to ' + defaultIdp.entityID)
         }
+
 
         // Validate required options
         if (!samlOptions.issuer) {
@@ -84,7 +113,18 @@ class Strategy extends SAMLStrategy {
         // Copy all remaining options
         Object.assign(samlOptions, {
             ...options,
-            name
+            name,
+            additionalParams: {
+                RelayState: options.loginPath
+            }
+        })
+
+        console.log('SAML Strategy Configuration:', {
+            name: samlOptions.name,
+            issuer: samlOptions.issuer,
+            entryPoint: samlOptions.entryPoint,
+            callbackUrl: samlOptions.callbackUrl,
+            loginPath: options.loginPath
         })
 
         // Initialize parent class with wrapped verify callback
@@ -99,12 +139,83 @@ class Strategy extends SAMLStrategy {
         this._loginPath = options.loginPath
     }
 
+    // authenticate(req, options) {
+    //     options = options || {}
+
+    //     // Ensure RelayState is set
+    //     options.additionalParams = options.additionalParams || {}
+    //     options.additionalParams.RelayState = options.additionalParams.RelayState || this._loginPath
+
+    //     // Call parent authenticate method
+    //     super.authenticate(req, options)
+    // }
+
+    // authenticate(req, options) {
+    //     console.log('\n===> Strategy.authenticate called')
+    //     console.log('===> Options:', options)
+    //     console.log('===> Request session:', req.session ? 'Session exists' : 'No session')
+
+    //     try {
+    //         const authenticateResult = super.authenticate(req, {
+    //             ...options,
+    //             additionalParams: {
+    //                 ...options.additionalParams,
+    //                 RelayState: options.additionalParams?.RelayState || this._loginPath
+    //             }
+    //         })
+    //         console.log('===> Authentication initiated successfully')
+    //         return authenticateResult
+    //     } catch (error) {
+    //         console.error('===> Error in authenticate method:', error)
+    //         throw error
+    //     }
+    // }
+
+    authenticate(req, options) {
+        console.log('\n===> Strategy.authenticate called')
+        console.log('===> Options:', options)
+        console.log('===> Request session:', req.session ? 'Session exists' : 'No session')
+
+        try {
+            console.log('===> Pre-authentication checks:')
+            console.log('===> SAML options:', this._saml?.options)
+            console.log('===> Creating authentication request...')
+
+            const authenticateResult = super.authenticate(req, {
+                ...options,
+                additionalParams: {
+                    ...options.additionalParams,
+                    RelayState: options.additionalParams?.RelayState || this._loginPath
+                }
+            })
+
+            console.log('===> Authentication initiated successfully')
+            console.log('===> Authentication result:', authenticateResult)
+
+            return authenticateResult
+        } catch (error) {
+            console.error('===> Error in authenticate method:', error)
+            throw error
+        }
+    }
+
+    protected() {
+        console.log('===> Called protect() method')
+        return super.protect()
+    }
+
+    _generateAuthorizeRequest(req, options) {
+        console.log('===> Generating authorize request')
+        console.log('===> Request options:', options)
+        return super._generateAuthorizeRequest(req, options)
+    }
+
     protect() {
         return (req, res, next) => {
             if (req.isAuthenticated() && req.session?.strategy === this.name) {
                 return next()
             }
-            
+
             if (req.session) {
                 req.session.strategy = this.name
                 req.session.returnTo = req.url
