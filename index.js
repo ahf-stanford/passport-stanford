@@ -175,39 +175,59 @@ class Strategy extends SAMLStrategy {
         console.log('\n===> Strategy.authenticate called')
         console.log('===> Options:', options)
         console.log('===> Request session:', req.session ? 'Session exists' : 'No session')
-
+        
         try {
             console.log('===> Pre-authentication checks:')
-            console.log('===> SAML options:', this._saml?.options)
+            console.log('===> SAML options:', {
+                ...this._saml?.options,
+                // Exclude sensitive data from logs
+                decryptionPvk: this._saml?.options?.decryptionPvk ? 'exists' : 'missing',
+                decryptionCert: this._saml?.options?.decryptionCert ? 'exists' : 'missing'
+            })
             console.log('===> Creating authentication request...')
-
+            
+            // Track the request state
+            req.session.samlRequestStarted = true
+            
             const authenticateResult = super.authenticate(req, {
                 ...options,
                 additionalParams: {
                     ...options.additionalParams,
                     RelayState: options.additionalParams?.RelayState || this._loginPath
-                }
+                },
+                // Force HTTP-Redirect binding
+                authnRequestBinding: 'HTTP-Redirect'
             })
-
-            console.log('===> Authentication initiated successfully')
-            console.log('===> Authentication result:', authenticateResult)
-
+            
+            console.log('===> Authentication initiated')
+            if (authenticateResult) {
+                console.log('===> Authentication result:', {
+                    type: typeof authenticateResult,
+                    value: authenticateResult
+                })
+            }
+            
             return authenticateResult
         } catch (error) {
             console.error('===> Error in authenticate method:', error)
+            console.error('===> Error stack:', error.stack)
             throw error
         }
     }
 
+    _generateAuthorizeRequest(req, options) {
+        console.log('===> Generating authorize request')
+        console.log('===> Request options:', {
+            ...options,
+            // Exclude sensitive data
+            privateKey: options.privateKey ? 'exists' : 'missing',
+            cert: options.cert ? 'exists' : 'missing'
+        })
+        return super._generateAuthorizeRequest(req, options)
+    }
     protected() {
         console.log('===> Called protect() method')
         return super.protect()
-    }
-
-    _generateAuthorizeRequest(req, options) {
-        console.log('===> Generating authorize request')
-        console.log('===> Request options:', options)
-        return super._generateAuthorizeRequest(req, options)
     }
 
     protect() {
