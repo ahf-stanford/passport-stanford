@@ -70,6 +70,7 @@ class Strategy extends SAMLStrategy {
                 throw new Error('Unknown IdP: ' + options.idp)
             }
             const idp = idps[options.idp]
+            console.log("=====> 101 =====-----> entryPoint: ", idp.entryPoint)
             Object.assign(samlOptions, {
                 entryPoint: idp.entryPoint,
                 cert: idp.cert,
@@ -80,6 +81,7 @@ class Strategy extends SAMLStrategy {
             })
         } else if (!options.entryPoint || !options.cert) {
             const defaultIdp = idps.dev
+            console.log("=====> 102 =====-----> entryPoint: ", defaultIdp.entryPoint)
             Object.assign(samlOptions, {
                 entryPoint: defaultIdp.entryPoint,
                 cert: defaultIdp.cert,
@@ -118,6 +120,8 @@ class Strategy extends SAMLStrategy {
                 RelayState: options.loginPath
             }
         })
+        console.log("=====> 103 =====-----> entryPoint: ", samlOptions.entryPoint)
+
 
         console.log('SAML Strategy Configuration:', {
             name: samlOptions.name,
@@ -225,6 +229,7 @@ class Strategy extends SAMLStrategy {
         })
         return super._generateAuthorizeRequest(req, options)
     }
+
     protected() {
         console.log('===> Called protect() method')
         return super.protect()
