@@ -5,6 +5,10 @@ const idps = require('./lib/idps')
 
 class Strategy extends SAMLStrategy {
     constructor(options, verify) {
+        console.log('======================================================')
+        console.log('===> passport-stanford - Strategy.constructor called')
+        console.log('======================================================')
+
         // Set default options
         const samlOptions = {
             protocol: options.protocol || 'https://',
