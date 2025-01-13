@@ -186,12 +186,12 @@ class Strategy extends SAMLStrategy {
         
         try {
             console.log('===> Pre-authentication checks:')
-            console.log('===> SAML options:', {
-                ...this._saml?.options,
-                // Exclude sensitive data from logs
-                decryptionPvk: this._saml?.options?.decryptionPvk ? 'exists' : 'missing',
-                decryptionCert: this._saml?.options?.decryptionCert ? 'exists' : 'missing'
-            })
+            // console.log('===> SAML options:', {
+            //     ...this._saml?.options,
+            //     // Exclude sensitive data from logs
+            //     decryptionPvk: this._saml?.options?.decryptionPvk ? 'exists' : 'missing',
+            //     decryptionCert: this._saml?.options?.decryptionCert ? 'exists' : 'missing'
+            // })
             console.log('===> Creating authentication request...')
             
             // Track the request state
@@ -207,7 +207,7 @@ class Strategy extends SAMLStrategy {
                 authnRequestBinding: 'HTTP-Redirect'
             })
             
-            console.log('===> Authentication initiated')
+            console.log('===> Authentication initiated', authenticateResult)
             if (authenticateResult) {
                 console.log('===> Authentication result:', {
                     type: typeof authenticateResult,
